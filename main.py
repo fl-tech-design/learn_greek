@@ -6,12 +6,22 @@ this module is a first step to a big greek learning app.
 
 import sqlite3
 import sys
-import tkinter as tk
 
 import pygame as pg
 
+# import time
+
+pg.init()
+
 
 # import time
+class Fon:
+    """this class defines the game fonts"""
+    fo100 = pg.font.SysFont("Arial", 100)
+    fo40 = pg.font.SysFont("Arial", 40)
+    fo23 = pg.font.SysFont("Arial", 23)
+    fo16 = pg.font.SysFont("Arial", 16)
+
 
 def quit_game():
     """ quit the game and close the window"""
@@ -19,63 +29,46 @@ def quit_game():
     sys.exit(0)
 
 
-class Window:
-    """the window class include all win configs"""
-
-    def __init__(self):
-        """start the main window a set the config function"""
-        self.win_main = tk.Tk()
-
-        self.set_configs()
-
-    def set_configs(self):
-        """set the main title, geometry and oder settings"""
-        self.win_main.title("Learn Greek")
-        self.win_main.geometry("500x500")
-        self.win_main.config(bg="black")
-
-
 class MainApp:
     """the main class of the app"""
 
     def __init__(self):
         """start the window and initialize the String-vars"""
+        self.n_stat = 0
         self.g_stat = 0
-        self.l_dis, self.l_gre, self.l_ger = (None,) * 3
+        self.w_nr = 0
 
-        self.but_del, self.but_new, self.but_nxt = (None,) * 3
+        WordDict.create_table(WordDict())
+        self.data = WordDict.read_data(WordDict())
 
-        self.w_number = 0
         self.win = pg.display.set_mode((WIN_W, WIN_H))
         self.clock = pg.time.Clock()
         self.i_rect = pg.Rect(WIN_W + 25, WIN_H - 20, 90, 40)
         self.active = False
+        self.u_text = ""
+        self.w_ger = self.data[self.w_nr][0]
+        self.w_gre = self.data[self.w_nr][1]
+        self.w_des = self.data[self.w_nr][2]
 
-        self.w_ger, self.w_gre, self.w_descr = (None,) * 3
-
-        WordDict.create_table(WordDict())
-        self.data = WordDict.read_data(WordDict())
         self.ger_words = WordDict.read_ger_words(WordDict())
-        self.g_w_list = []
+        self.ger_w_list = []
         self.load_ger_words()
         self.main_loop()
 
     def load_ger_words(self):
         """make a list from all german words from the database"""
         for index, word in enumerate(self.ger_words):
-            self.g_w_list.append(list(self.ger_words[index]))
+            self.ger_w_list.append(list(self.ger_words[index]))
             print(f"index {index}: ", word)
 
     def new_word(self):
         """get the new word and save to the String-vars"""
-        self.w_ger = input("eingeben")
-        self.w_gre.set(input("eingeben"))
-        self.w_descr.set(input("eingeben"))
+
         self.save_new_word()
 
     def save_new_word(self):
         """Write the new word in the database"""
-        WordDict.insert_data(WordDict(), self.w_ger.get(), self.w_gre.get(), self.w_descr.get())
+        WordDict.insert_data(WordDict(), self.w_ger, self.w_gre, self.w_des)
 
     @staticmethod
     def change_word():
@@ -83,9 +76,9 @@ class MainApp:
         print("def change word finish")
 
     def next_word(self):
-        self.w_number += 1
-        if self.w_number >= len(self.data) - 1:
-            self.w_number = 0
+        self.w_nr += 1
+        if self.w_nr >= len(self.data) - 1:
+            self.w_nr = 0
         self.change_word()
 
     def event_control(self):
@@ -102,33 +95,57 @@ class MainApp:
                 if event.key == pg.K_ESCAPE:
                     quit_game()
                 if event.key == pg.K_SPACE:
-                    self.g_stat = 1
+                    self.w_nr += 1
+
+
+    def entry_name(self):
+        """ make a textfield for the high-score name"""
+        self.n_stat = 1
+        while self.n_stat:
+            for event in pg.event.get():
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_RETURN:
+                        self.u_text = self.u_text[:]
+                        self.n_stat = 0
+                    else:
+                        self.u_text += event.unicode
+                        print("self.u_text: ", self.u_text)
+                        print("taste gedrückt")
+                        self.show_text(self.u_text, FG_P, 300, 400, Fon.fo23)
+        self.g_stat = 0
+
+    def show_text(self, text, col, p_x, p_y, fo_st):
+        """ a small def to create a textfield"""
+        act_text = fo_st.render(text, True, pg.Color(col))
+        rect_text = act_text.get_rect()
+        rect_text.x = p_x
+        rect_text.y = p_y
+        self.win.blit(act_text, rect_text)
+
+    def standard_view(self):
+        """ show the start window"""
+        self.win.fill(BG_G)
+        self.show_text(self.data[self.w_nr][0], FG_P, 100, 100, Fon.fo23)
+        self.show_text(self.data[self.w_nr][1], FG_P, 200, 200, Fon.fo40)
+        self.show_text(self.data[self.w_nr][2], FG_P, 300, 300, Fon.fo16)
 
     def main_loop(self):
         """ this is the main loop"""
         while True:
             self.event_control()
             if self.g_stat == 0:
-                self.start_loop()
+                self.show_word_loop()
             elif self.g_stat == 1:
-                self.game_loop()
-            elif self.g_stat == 2:
-                self.end_loop()
+                self.new_word_loop()
             pg.display.update()
             self.clock.tick(FPS)
 
-    def start_loop(self):
-        print("Start_Loop")
-        pass
+    def show_word_loop(self):
+        print("self.ger_w_list: ", self.ger_w_list)
+        self.standard_view()
 
-    def end_loop(self):
-        print("End_Loop")
-
-        pass
-
-    def game_loop(self):
-        print("Game_Loop")
-        pass
+    def new_word_loop(self):
+        self.entry_name()
 
 
 class WordDict:
@@ -193,9 +210,9 @@ class WordDict:
         self.stop_connection()
 
 
-pg.init()
+FG_A, FG_P, BG_G = (0, 255, 0), (225, 225, 225), (100, 100, 100)
 
-WIN_W, WIN_H = 500, 500
+WIN_W, WIN_H = 1000, 800
 FPS = 10
 if __name__ == "__main__":
     MainApp()
