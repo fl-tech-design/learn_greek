@@ -4,22 +4,39 @@
 this module is a first step to a big greek learning app.
 """
 
-import sqlite3
-import sys
+import random
+import time
 
 import pygame as pg
 
-import but_rect
-import config as conf
+import but_func as buf
+import config as con
+import data_func as daf
 
 pg.init()
 pg.mixer.init()
 
 
-def quit_game():
-    """ quit the game and close the window"""
-    pg.quit()
-    sys.exit(0)
+def new_word_func():
+    """get the new word and save to the String-vars"""
+    new_cat_name = input("geben sie neuen Kategorien Name in Kleinbuchstaben ein: ")
+    n_w_ger = input("german word: ")
+    n_w_ger_s = n_w_ger.split(" ")
+    n_w_ger = n_w_ger_s[0]
+    print("n_w_ger_s: ", n_w_ger_s)
+    for i in range(1, len(n_w_ger_s)):
+        n_w_ger += "_"
+        n_w_ger += n_w_ger_s[i]
+    print("n_w_ger: ", n_w_ger)
+    n_w_gre = input("greek word: ")
+    n_w_des = input("description: ")
+    n_w_pho = input("phonetic: ")
+    n_w_exa = input("example: ")
+    daf.add_new_cat_name(new_cat_name, new_cat_name + ".db")
+    daf.WordDict.cr_word_db(daf.WordDict(), new_cat_name + ".db")
+    daf.WordDict.ins_w_to_db(daf.WordDict(), n_w_ger, n_w_gre, n_w_des, n_w_pho, n_w_exa,
+                             daf.ret_db_datafiles_val(new_cat_name))
+    MainApp.load_db_file_names(MainApp())
 
 
 class MainApp:
@@ -27,306 +44,287 @@ class MainApp:
 
     def __init__(self):
         """start the window and initialize the String-vars"""
-        self.d_impo, self.d_verb, self.d_alph, self.d_info = (None,) * 4
+        self.u_points = None
+        self.db_file_names, self.f_n_keys = [], []
         self.app_stat, self.mouse_pos = 0, None
+        self.load_db_file_names()
+        print(self.f_n_keys)
+        self.dict_number = 0
+        self.d_alpha, self.d_verbs, self.d_have, self.d_go, self.d_be, self.d_zahlen = ([],) * 6
+        self.word_dict = [self.d_alpha, self.d_verbs, self.d_have, self.d_go, self.d_be, self.d_zahlen]
+        self.load_all_dicts()
+        self.json_dict = daf.ret_json_full()
+        self.cd_counter = 3
 
-        self.word_categories = ["ALPHABET", "VERBS", "ADJECTIVE", "VIP"]
-        self.cr_word_tables()
-        self.act_w_category = self.word_categories[0]
+        self.act_sql_dict = daf.WordDict.ret_db_compl(daf.WordDict(), daf.ret_db_datafiles_val("alphabet"))
 
-        self.full_alphabet = []
-        self.load_full_tablar("ALPHABET")
-        self.len_full_alphabet = len(self.full_alphabet)
-
-        self.ger_w_list = []
-        self.actualize_ger_w_list()
-        self.len_ger_w_list = len(self.ger_w_list)
-
-        self.win = pg.display.set_mode((conf.WIN_W, conf.WIN_H))
+        self.win = pg.display.set_mode((con.WIN_W, con.WIN_H))
         self.clock = pg.time.Clock()
 
+
         self.w_numb = 0
+        self.loop_main()
 
-        print("self.len_of_ger_word_list: ", self.len_ger_w_list)
-        print(self.ger_w_list[0])
-        print(self.full_alphabet[0][1])
+    def load_ponits(self):
+        self.u_points = daf.ret_u_data_val("points")
 
-        self.len_info_list = 0
-        self.check_ger_w_length()
-        self.main_loop()
 
-    def actualize_ger_w_list(self):
-        self.ger_w_list = WordDict.r_ger_w(WordDict(), self.act_w_category, "W_GER")
-
-    def cr_word_tables(self):
-        for i in range(len(self.word_categories)):
-            WordDict.cr_n_word_in_sql(WordDict(), self.word_categories[i])
-
-    def load_full_tablar(self, word_category):
-        print("load full tablar: ", word_category)
-        self.full_alphabet = WordDict.r_data(WordDict(), "*", word_category)
-        self.len_full_alphabet = len(self.full_alphabet)
-
-    def check_ger_w_length(self):
-        self.len_ger_w_list = len(self.ger_w_list)
-
-    def cr_but(self, rect, text, p_x, p_y, fo=conf.FO23):
-        """create a button at the inserted position"""
-        pg.draw.ellipse(self.win, conf.BG_G, rect)
-        if rect.collidepoint(self.mouse_pos):
-            ExT.show_text(self.win, text, fo, p_x, p_y)
-        else:
-            ExT.show_text(self.win, text, fo, p_x, p_y, 1)
-
-    def event_control(self):
-        """ handle the key events."""
-        for event in pg.event.get():
-            self.mouse_pos = pg.mouse.get_pos()
-            if event.type == pg.MOUSEBUTTONDOWN:
-                if but_rect.main.collidepoint(self.mouse_pos):
-                    self.app_stat = 0
-                if but_rect.voca.collidepoint(self.mouse_pos):
-                    self.app_stat = 1
-                if but_rect.alph.collidepoint(self.mouse_pos):
-                    self.app_stat = 2
-                if but_rect.verb.collidepoint(self.mouse_pos):
-                    self.app_stat = 3
-                if but_rect.vip.collidepoint(self.mouse_pos):
-                    self.app_stat = 4
-                if but_rect.n_word.collidepoint(self.mouse_pos):
-                    self.new_word()
-                if but_rect.next.collidepoint(self.mouse_pos):
-                    self.save_end_of_voc_list(0)
-                    ExT.play_audio_word(self.ger_w_list[self.w_numb])
-                if but_rect.back.collidepoint(self.mouse_pos):
-                    self.save_end_of_voc_list(1)
-                    ExT.play_audio_word(self.ger_w_list[self.w_numb])
-                if but_rect.play.collidepoint(self.mouse_pos):
-                    ExT.play_audio_word(self.ger_w_list[self.w_numb])
-                    self.win.blit(conf.hf_pas, (but_rect.b_play_x - 9, but_rect.b_play_y - 9))
-            if but_rect.play.collidepoint(self.mouse_pos):
-                self.win.blit(conf.hf_pas, (but_rect.b_play_x - 9, but_rect.b_play_y - 9))
-            if event.type == pg.QUIT:
-                quit_game()
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_ESCAPE:
-                    quit_game()
-                if event.key == pg.K_RIGHT:
-                    self.save_end_of_voc_list(0)
-                    ExT.play_audio_word(str(self.ger_w_list[self.w_numb]))
-                if event.key == pg.K_LEFT:
-                    self.save_end_of_voc_list(1)
-                    ExT.play_audio_word(str(self.ger_w_list[self.w_numb]))
-                if event.key == pg.K_n:
-                    self.new_word()
-                if event.key == pg.K_d:
-                    WordDict.delete_data(WordDict())
-
-    @staticmethod
-    def new_word():
-        """get the new word and save to the String-vars"""
-        cat = input("Kategorie eingeben: ")
-        n_w_ger = input("german word: ")
-        n_w_gre = input("greek word: ")
-        n_w_des = input("description: ")
-        n_w_pho = input("phonetic: ")
-        n_w_exa = input("example: ")
-        WordDict.ins_full_word(WordDict(), n_w_ger, n_w_gre, n_w_des, n_w_pho, n_w_exa, cat)
-
-    def save_end_of_voc_list(self, stat):
+    def change_word(self, stat):
         """ take the end of the vocabulary list state """
         if stat == 0:
-            self.check_ger_w_length()
-            if self.w_numb < self.len_ger_w_list - 1:
-                self.w_numb += 1
-            else:
+            if self.w_numb >= len(self.word_dict[self.dict_number]) - 1:
                 self.w_numb = self.w_numb
-        else:
-            if self.w_numb > 0:
-                self.w_numb -= 1
             else:
+                self.w_numb += 1
+        else:
+            if self.w_numb <= 0:
                 self.w_numb = 0
+            else:
+                self.w_numb -= 1
 
-    def main_loop(self):
+    def events_main(self):
+        """ handle the key events."""
+        for event in pg.event.get():
+            if event.type == pg.MOUSEBUTTONDOWN:
+                if buf.b_alph.collidepoint(self.mouse_pos) and self.app_stat == 0:
+                    self.dict_number = 0
+                    self.app_stat = 1
+                    self.play_audio_word(self.word_dict[self.dict_number][self.w_numb][0])
+                if buf.digit.collidepoint(self.mouse_pos) and self.app_stat == 0:
+                    self.dict_number = 5
+                    self.app_stat = 1
+                    self.play_audio_word(self.word_dict[self.dict_number][self.w_numb][0])
+                if buf.b_sel_word_game.collidepoint(self.mouse_pos) and self.app_stat == 0:
+                    self.app_stat = 2
+                if buf.b_main.collidepoint(self.mouse_pos) and self.app_stat > 0:
+                    self.app_stat = 0
+                if buf.n_word.collidepoint(self.mouse_pos) and self.app_stat == 0:
+                    new_word_func()
+                if buf.b_next.collidepoint(self.mouse_pos) and self.app_stat == 1:
+                    self.change_word(0)
+                    self.play_audio_word(str(self.word_dict[self.dict_number][self.w_numb][0]))
+                if buf.b_back.collidepoint(self.mouse_pos) and self.app_stat == 1:
+                    self.change_word(1)
+                    self.play_audio_word(str(self.word_dict[self.dict_number][self.w_numb][0]))
+                if buf.b_play.collidepoint(self.mouse_pos) and self.app_stat == 1:
+                    self.play_audio_word(self.word_dict[self.dict_number][self.w_numb][0])
+            if event.type == pg.QUIT:
+                buf.quit_game()
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_ESCAPE:
+                    buf.quit_game()
+                if event.key == pg.K_RIGHT and self.app_stat == 1:
+                    self.change_word(0)
+                    self.play_audio_word(str(self.word_dict[self.dict_number][self.w_numb][0]))
+                if event.key == pg.K_LEFT and self.app_stat == 1:
+                    self.change_word(1)
+                    self.play_audio_word(str(self.word_dict[self.dict_number][self.w_numb][0]))
+                if event.key == pg.K_n:
+                    new_word_func()
+
+    def load_all_dicts(self):
+        for i in range(len(self.word_dict)):
+            self.word_dict[i] = daf.WordDict.ret_db_compl(daf.WordDict(), daf.ret_db_datafiles_val(self.f_n_keys[i]))
+            print(self.word_dict[i])
+
+    def load_db_file_names(self):
+        self.db_file_names = daf.ret_db_datafiles()
+        self.f_n_keys = list(self.db_file_names.keys())
+        for i in range(len(self.db_file_names)):
+            daf.WordDict.cr_word_db(daf.WordDict(), self.db_file_names[self.f_n_keys[i]])
+
+    def loop_main(self):
         """ this is the main loop"""
         while True:
-            self.win.fill(conf.BG_G)
-            self.event_control()
-            self.load_full_tablar(self.act_w_category)
-            self.actualize_ger_w_list()
+            self.mouse_pos = pg.mouse.get_pos()
             if self.app_stat == 0:
-                self.start_loop()
+                self.loop_start()
             if self.app_stat == 1:
-                self.voc_menu_loop()
+                self.loop_show_a_w()
             if self.app_stat == 2:
-                print("show alphabet")
-                self.act_w_category = "ALPHABET"
-                self.show_word_loop()
+                self.loop_countdown()
             if self.app_stat == 3:
-                print("show verbs")
-                self.act_w_category = "VERBS"
-                self.show_word_loop()
-            if self.app_stat == 4:
-                print("show VIP")
-                self.act_w_category = "VIP"
-                self.show_word_loop()
-
+                SelectRightWordGame.loop_word_game(SelectRightWordGame(), self.win)
+                self.cd_counter = 3
+                self.app_stat = 0
             pg.display.update()
-            self.clock.tick(conf.FPS)
+            self.clock.tick(con.FPS)
+            self.events_main()
 
-    def start_loop(self):
+    def loop_start(self):
         """show the start-window with buttons for the functions of the app. App_stat: 1"""
-        print("start_loop")
-        self.win.blit(conf.flag_ger, (25, 25))
-        self.win.blit(conf.flag_gre, (5, 5))
-        ExT.show_text(self.win, "griechisch lernen", conf.FO40, 350, 25)
-        self.show_a_long_string()
+        self.w_numb = 0
+        self.load_ponits()
+        self.win.fill(con.BG_G)
+        self.win.blit(con.bg, (0, 0))
+        self.win.blit(con.flag_ger, (25, 25))
+        self.win.blit(con.flag_gre, (5, 5))
+        buf.show_text(self.win, self.json_dict["text"]["tit_main"], con.FO40, 332, 10)
+        buf.show_text(self.win, self.json_dict["text"]["start"], con.FO16, 430, 60)
+        buf.show_text(self.win, self.json_dict["text"]["man_p_1"], con.FO16, 300, 125)
+        buf.show_text(self.win, self.json_dict["user_data"]["u_name"], con.FO23, 89, 150)
+        buf.show_text(self.win, self.json_dict["text"]["l_points"], con.FO23, 195, 150)
+        buf.show_text(self.win, str(self.u_points), con.FO23, 300, 150)
+        buf.cr_g_but(self.win, buf.b_alph, buf.b_al_x + 80, buf.b_al_y + 4, self.mouse_pos,
+                     self.json_dict["text"]["l_alpha"])
+        buf.cr_g_but(self.win, buf.digit, buf.dig_x + 80, buf.dig_y + 4, self.mouse_pos,
+                     self.json_dict["text"]["l_digit"])
+        buf.cr_g_but(self.win, buf.b_sel_word_game, buf.sel_w_x + 80, buf.sel_w_y + 8, self.mouse_pos,
+                     self.json_dict["text"]["l_r_w"], con.FO16)
+        buf.cr_g_but(self.win, buf.n_word, buf.n_w_x + 80, buf.n_w_y + 8, self.mouse_pos,
+                     self.json_dict["text"]["l_new_w"], con.FO16)
 
-        self.cr_but(but_rect.voca, "Vokabular", but_rect.voca_x + 100, but_rect.voca_y + 4)
-        self.cr_but(but_rect.n_word, "Neues Wort", but_rect.n_word_x + 80, but_rect.n_word_y + 4)
+    def loop_countdown(self):
+        buf.show_countdown(self.win, self.cd_counter)
+        self.cd_counter -= 1
+        if self.cd_counter < 0:
+            self.app_stat = 3
 
-    def show_a_long_string(self):
-        counter = 0
-        y_pos = 150
-        for i in range(self.len_info_list % 5):
-            ExT.show_text(self.win, "self.format_a_string(counter)", conf.FO23, 250, y_pos)
-            y_pos += 30
-            counter += 5
+    def loop_verbs(self):
+        buf.cr_but(self.win, buf.have, buf.have_x + 80, buf.have_y + 4, self.mouse_pos,
+                   self.json_dict["text"]["l_have"])
+        buf.cr_but(self.win, buf.b_go, buf.go_x + 80, buf.go_y + 4, self.mouse_pos,
+                   self.json_dict["text"]["l_go"])
 
-    def voc_menu_loop(self):
-        """shows a window for the vocabulary choice"""
-        print("voc_menu_loop")
-        ExT.show_text(self.win, "Vokabeln:", conf.FO40, conf.WIN_W / 2, 25)
-        self.cr_but(but_rect.alph, "Alphabet", but_rect.alph_x + 80, but_rect.alph_y + 4)
-        self.cr_but(but_rect.verb, "Verben", but_rect.verb_x + 80, but_rect.verb_y + 4)
-        self.cr_but(but_rect.vip, "Wichtige Wörter", but_rect.vip_x + 80, but_rect.vip_y + 4)
-        self.cr_but(but_rect.main, "Hauptmenü", but_rect.main_x + 80, but_rect.main_y + 4)
-
-    def show_word_loop(self):
+    def loop_show_a_w(self):
         """show the words in diverse fields. App_stat: 1"""
-        print("show_word_loop")
-        fonts = [conf.FO40, conf.FO100, conf.FO23, conf.FO23, conf.FO40]
-        y_pos = [50, 130, 400, 350, 275]
+        self.win.fill(con.BG_G)
+        fonts = [con.FO40, con.FO100, con.FO23, con.FO40, con.FO23]
+        y_pos = [200, 50, 400, 275, 340]
+        f_text = self.word_dict[self.dict_number][self.w_numb][4]
+        f_t_split = f_text.split(" ")
+        print(f_t_split)
+        print(len(f_t_split))
+        for i in range(5):
+            buf.show_text(self.win, self.word_dict[self.dict_number][self.w_numb][i], fonts[i], con.W_MID, y_pos[i])
+        buf.cr_but(self.win, buf.b_next, buf.next_x + 90, buf.next_y - 4, self.mouse_pos, "next →", con.FO40)
+        buf.cr_but(self.win, buf.b_back, buf.b_ba_x + 80, buf.b_ba_y - 4, self.mouse_pos, "← back", con.FO40)
+        buf.cr_but(self.win, buf.b_main, buf.main_x + 80, buf.main_y + 4, self.mouse_pos, "Hauptmenü")
+        buf.cr_but_play(self.win, buf.b_play, buf.play_x + 80, buf.play_y + 4, self.mouse_pos, "")
+        self.win.blit(con.hf_act, (buf.play_x - 9, buf.play_y - 9))
 
-        ExT.show_text(self.win, self.full_alphabet[self.w_numb][0], fonts[0], conf.W_MID, y_pos[0])
-        ExT.show_text(self.win, self.full_alphabet[self.w_numb][1], fonts[1], conf.W_MID, y_pos[1])
-        ExT.show_text(self.win, self.full_alphabet[self.w_numb][3], fonts[3], conf.W_MID, y_pos[3])
-        ExT.show_text(self.win, self.full_alphabet[self.w_numb][4], fonts[4], conf.W_MID, y_pos[4])
-        if len(self.full_alphabet[self.w_numb][2]) > 40:
-            ExT.show_text(self.win, self.full_alphabet[self.w_numb][2], conf.FO16, conf.W_MID, y_pos[2])
-        else:
-            ExT.show_text(self.win, self.full_alphabet[self.w_numb][2], conf.FO23, conf.W_MID, y_pos[2])
-        self.cr_but(but_rect.next, "next →", but_rect.b_next_x + 90, but_rect.b_next_y - 4, conf.FO40)
-        self.cr_but(but_rect.back, "← back", but_rect.b_back_x + 80, but_rect.b_back_y - 4, conf.FO40)
-        self.cr_but(but_rect.main, "Hauptmenü", but_rect.main_x + 80, but_rect.main_y + 4)
-        self.cr_but(but_rect.play, "", but_rect.b_play_x + 80, but_rect.b_play_y + 4)
-        self.win.blit(conf.hf_act, (but_rect.b_play_x - 9, but_rect.b_play_y - 9))
-
-
-class ExT:
-    """include some functions for the main app"""
-
-    @staticmethod
-    def show_text(win, text, font, p_x, p_y, act=0):
-        """create a text-field who changed the color if collided"""
-        if act == 0:
-            title = font.render(text, True, pg.Color(conf.FG_P))
-        else:
-            title = font.render(text, True, pg.Color(conf.FG_A))
-        title_rect = title.get_rect()
-        title_rect.midtop = (p_x, p_y)
-        win.blit(title, title_rect)
-
-    @staticmethod
-    def play_audio_word(word):
+    def play_audio_word(self, word):
         """play a soundfile from the word."""
         pg.mixer.music.load("Audio/" + word + ".mp3")
         pg.mixer.music.set_volume(0.7)
+        pg.draw.ellipse(self.win, con.FG_P, [buf.play_x - 10, buf.play_y - 10, 50, 50])
+        pg.display.update()
         pg.mixer.music.play()
 
 
-class WordDict:
-    """ the sql class"""
-
+class SelectRightWordGame:
     def __init__(self):
-        """ define the vars of the class"""
-        self.conn = None
-        self.cursor = None
+        self.w_1, self.w_2, self.w_3, self.w_4, self.s_w = "", "", "", "", ""
+        self.zf_z_list = []
+        self.word_dict = daf.WordDict.ret_db_compl(daf.WordDict(), daf.ret_db_datafiles_val("zahlen"))
+        self.but_pos_x = (120, 400, 120, 400)
+        self.but_pos_y = (280, 280, 420, 420)
+        self.pos_list = []
+        self.set_new_w()
 
-    def cr_n_word_in_sql(self, new_word):
-        """Check if a database is there. if not, it'll be created"""
-        self.start_connection()
-        sql_instruction = "CREATE TABLE IF NOT EXISTS " + new_word + " ( W_GER VARCHAR(30)," \
-                                                                     "W_GRE VARCHAR(30)," \
-                                                                     "W_DES VARCHAR(40)," \
-                                                                     "W_PHO VARCHAR(30)," \
-                                                                     "W_EXA VARCHAR(30)," \
-                                                                     "W_POS INT)"
-        self.cursor.execute(sql_instruction)
-        self.stop_connection()
+        self.answer = ""
+        self.w_stat = True
+        self.lives = 3
+        self.count_r_a = 0
 
-    def cr_n_list_in_sql(self, new_list):
-        """Check if a database is there. if not, it'll be created"""
-        self.start_connection()
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS " + new_list + " ( LIST VARCHAR(300)")
-        self.stop_connection()
+        self.u_points = daf.ret_u_data_val("points")
 
-    def ins_full_word(self, w_ge, w_gr, w_di, w_ph, w_ex, cat):
-        """Preparing SQL queries to INSERT a record into the database."""
-        self.start_connection()
-        self.cursor.execute(
-            "INSERT INTO " + cat + "(W_GER, W_GRE, W_DES, W_PHO, W_EXA, W_POS ) VALUES(?, ?, ?, ?, ?, ?)",
-            (w_ge, w_gr, w_di, w_ph, w_ex, 0))
-        print("Records inserted......IN: ")
-        self.stop_connection()
+        self.b_1_x, self.b_1_y = self.but_pos_x[self.pos_list[0]], self.but_pos_y[self.pos_list[0]]
+        self.b_1 = pg.Rect(self.b_1_x, self.b_1_y, 200, 100)
+        self.b_2_x, self.b_2_y = self.but_pos_x[self.pos_list[1]], self.but_pos_y[self.pos_list[1]]
+        self.b_2 = pg.Rect(self.b_2_x, self.b_2_y, 200, 100)
+        self.b_3_x, self.b_3_y = self.but_pos_x[self.pos_list[2]], self.but_pos_y[self.pos_list[2]]
+        self.b_3 = pg.Rect(self.b_3_x, self.b_3_y, 200, 100)
+        self.b_4_x, self.b_4_y = self.but_pos_x[self.pos_list[3]], self.but_pos_y[self.pos_list[3]]
+        self.b_4 = pg.Rect(self.b_4_x, self.b_4_y, 200, 100)
 
-    def change_word_state(self, step):
-        """the word state increase if the word is learned"""
-        self.start_connection()
-        self.cursor.execute("UPDATE ALPHA SET W_POS=? WHERE W_GER=?", (step, "sdf"))
-        self.stop_connection()
+    def check_answer(self, win):
+        if self.answer == self.w_1:
+            self.set_new_w()
+            self.count_r_a += 1
+            self.u_points += 1
+            daf.add_user_points(self.u_points)
+        else:
+            self.lives -= 1
+            if self.lives == 0:
+                self.loop_loose(win)
+                time.sleep(3)
+                self.w_stat = False
 
-    def r_data(self, key_w, dic):
-        """ read all data from the database and return a list of all data"""
-        self.start_connection()
-        self.cursor.execute("SELECT " + key_w + " from " + dic)
-        data_dict = self.cursor.fetchall()
-        self.stop_connection()
-        return data_dict
+    def set_new_w(self):
+        self.zf_z_list = []
+        self.pos_list = []
+        while len(self.pos_list) < 4:
+            p_zahl = random.randint(0, 3)
+            if p_zahl not in self.pos_list:
+                self.pos_list.append(p_zahl)
+        while len(self.zf_z_list) < 4:
+            z_zahl = random.randint(0, len(self.word_dict) - 1)
+            if z_zahl not in self.zf_z_list:
+                self.zf_z_list.append(z_zahl)
+        self.s_w = self.word_dict[self.zf_z_list[0]][1]
+        self.w_1 = self.word_dict[self.zf_z_list[0]][0]
+        self.w_2 = self.word_dict[self.zf_z_list[1]][0]
+        self.w_3 = self.word_dict[self.zf_z_list[2]][0]
+        self.w_4 = self.word_dict[self.zf_z_list[3]][0]
+        self.b_1_x, self.b_1_y = self.but_pos_x[self.pos_list[0]], self.but_pos_y[self.pos_list[0]]
+        self.b_2_x, self.b_2_y = self.but_pos_x[self.pos_list[1]], self.but_pos_y[self.pos_list[1]]
+        self.b_3_x, self.b_3_y = self.but_pos_x[self.pos_list[2]], self.but_pos_y[self.pos_list[2]]
+        self.b_4_x, self.b_4_y = self.but_pos_x[self.pos_list[3]], self.but_pos_y[self.pos_list[3]]
+        self.b_1 = pg.Rect(self.b_1_x, self.b_1_y, 200, 100)
+        self.b_2 = pg.Rect(self.b_2_x, self.b_2_y, 200, 100)
+        self.b_3 = pg.Rect(self.b_3_x, self.b_3_y, 200, 100)
+        self.b_4 = pg.Rect(self.b_4_x, self.b_4_y, 200, 100)
 
-    def r_ger_w(self, cat, tab):
-        """read all german words from the dictionary"""
-        self.start_connection()
-        self.cursor.execute("SELECT " + tab + " from " + cat)
-        ger_words = self.cursor.fetchall()
-        print(ger_words)
-        ge_w_str = str(ger_words)
-        characters = "[]()',"
-        for x in range(len(characters)):
-            ge_w_str = ge_w_str.replace(characters[x], "")
-        ger_w_list = ge_w_str.split()
-        self.stop_connection()
-        return ger_w_list
+    def show_buttons(self, win, mouse_pos):
+        buf.cr_g_but(win, self.b_1, self.but_pos_x[self.pos_list[0]] + 100, self.but_pos_y[self.pos_list[0]] + 30,
+                     mouse_pos, self.w_1, con.FO40)
+        buf.cr_g_but(win, self.b_2, self.but_pos_x[self.pos_list[1]] + 100, self.but_pos_y[self.pos_list[1]] + 30,
+                     mouse_pos, self.w_2, con.FO40)
+        buf.cr_g_but(win, self.b_3, self.but_pos_x[self.pos_list[2]] + 100, self.but_pos_y[self.pos_list[2]] + 30,
+                     mouse_pos, self.w_3, con.FO40)
+        buf.cr_g_but(win, self.b_4, self.but_pos_x[self.pos_list[3]] + 100, self.but_pos_y[self.pos_list[3]] + 30,
+                     mouse_pos, self.w_4, con.FO40)
 
-    def start_connection(self):
-        """open a connection to the database"""
-        self.conn = sqlite3.connect('dictionary.db')
-        self.cursor = self.conn.cursor()
+    def loop_word_game(self, win):
+        while self.w_stat:
+            win.fill(con.BG_G)
+            mouse_pos = pg.mouse.get_pos()
+            for event in pg.event.get():
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    if buf.b_main.collidepoint(mouse_pos):
+                        self.w_stat = False
+                    if self.b_1.collidepoint(mouse_pos):
+                        self.answer = self.w_1
+                    if self.b_2.collidepoint(mouse_pos):
+                        self.answer = self.w_2
+                    if self.b_3.collidepoint(mouse_pos):
+                        self.answer = self.w_3
+                    if self.b_4.collidepoint(mouse_pos):
+                        self.answer = self.w_4
+                    self.check_answer(win)
+            buf.cr_but(win, buf.b_main, buf.main_x + 80, buf.main_y + 4, mouse_pos, "Hauptmenü")
+            buf.show_text(win, self.s_w, con.FO100, con.W_MID, 50)
+            buf.show_text(win, daf.ret_db_text_val("l_r_ans"), con.FO23, 100, 10)
+            buf.show_text(win, str(self.count_r_a), con.FO23, 220, 10)
+            self.show_buttons(win, mouse_pos)
+            buf.show_text(win, daf.ret_db_text_val("l_life"), con.FO23, 550, 10)
 
-    def stop_connection(self):
-        """close the opened connection from database"""
-        self.conn.commit()
-        self.conn.close()
+            life_pos = 600
+            for i in range(self.lives):
+                win.blit(con.pic_gre, (life_pos, 13))
+                life_pos += 33
 
-    def delete_data(self):
-        """a delete function, whose deleting the given word"""
-        word = input("Wort-Kategorie eingeben: ")
-        t_xt = input("insert word to delete: ")
-        self.start_connection()
-        self.cursor.execute("DELETE FROM " + word + " WHERE W_GER=?", (t_xt,))
-        self.stop_connection()
+            pg.display.update()
+
+    def loop_loose(self, win):
+        win.fill(con.BG_G)
+        buf.show_text(win, daf.ret_db_text_val("l_lose"), con.FO40, con.W_MID, 50)
+        buf.show_text(win, daf.ret_db_text_val("l_g_end"), con.FO40, con.W_MID, 200)
+        buf.show_text(win, str(self.count_r_a), con.FO40, 100, 200)
+
+        pg.display.update()
 
 
-objects = []
 if __name__ == "__main__":
     MainApp()

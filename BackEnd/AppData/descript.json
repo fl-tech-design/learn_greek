@@ -1,0 +1,36 @@
+{
+  "text": {
+    "start": "Hier bist Du im Hauptmen\u00fc. Du kannst hier nach Kategorien ausw\u00e4hlen.",
+    "category": "Kategorien",
+    "tit_main": "Lerne griechisch...",
+    "l_alpha": "Alphabet",
+    "l_new_w": "Neues Wort eingeben",
+    "l_verbs": "Verben",
+    "l_have": "Haben",
+    "l_be": "Sein",
+    "l_go": "Gehen",
+    "l_digit": "Zahlen",
+    "l_r_w": "Richtiges Wort",
+    "l_learn": "Lernen",
+    "l_games": "Spiele",
+    "l_r_ans": "Richtige Antworten:",
+    "l_lose": "Leider keine Leben mehr",
+    "l_g_end": "Worte richtig gewusst",
+    "man_p_1": "Die Punkte zeigen Dein Lernfortschritt. Pro richtige antwort gibt es 1 Punkt.",
+    "l_points": "'s Punkte:",
+    "l_life": "Leben:",
+    "settings": "Bearbeiten"
+  },
+  "datafiles": {
+    "alphabet": "alphabet.db",
+    "verbs": "verbs.db",
+    "haben": "haben.db",
+    "gehen": "gehen.db",
+    "sein": "sein.db",
+    "zahlen": "zahlen.db"
+  },
+  "user_data": {
+    "points": 59,
+    "u_name": "Hanspeter"
+  }
+}
